@@ -1,0 +1,70 @@
+{
+	"name": "Trello card to GitHub issue",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "trello-card-created",
+				"responseMode": "onReceived",
+				"options": {}
+			},
+			"id": "trello-webhook",
+			"name": "Trello Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [240, 300],
+			"webhookId": "trello-card-created"
+		},
+		{
+			"parameters": {
+				"jsCode": "const action = $json.body?.action ?? $json.action ?? {};\nconst card = action.data?.card ?? $json.body?.card ?? $json.card ?? {};\nconst list = action.data?.listAfter ?? action.data?.list ?? {};\n\nreturn [{\n  json: {\n    title: card.name ?? 'Trello card',\n    description: [\n      card.desc ?? '',\n      card.shortUrl ? `Trello: ${card.shortUrl}` : '',\n      list.name ? `List: ${list.name}` : ''\n    ].filter(Boolean).join('\\n\\n')\n  }\n}];"
+			},
+			"id": "normalize-trello-card",
+			"name": "Normalize Trello Card",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [460, 300]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "=https://api.github.com/repos/{{$env.GITHUB_OWNER}}/{{$env.GITHUB_REPO}}/issues",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{ "name": "Accept", "value": "application/vnd.github+json" },
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{$env.GITHUB_TOKEN}}"
+						},
+						{ "name": "X-GitHub-Api-Version", "value": "2022-11-28" }
+					]
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={\"title\": $json.title, \"body\": $json.description}",
+				"options": {}
+			},
+			"id": "create-github-issue",
+			"name": "Create GitHub Issue",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [700, 300]
+		}
+	],
+	"connections": {
+		"Trello Webhook": {
+			"main": [
+				[{ "node": "Normalize Trello Card", "type": "main", "index": 0 }]
+			]
+		},
+		"Normalize Trello Card": {
+			"main": [[{ "node": "Create GitHub Issue", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "trello-github-v1",
+	"meta": { "templateCredsSetupCompleted": false },
+	"tags": []
+}
