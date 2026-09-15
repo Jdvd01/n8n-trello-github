@@ -16,13 +16,12 @@ Repositorio base para desplegar n8n en Railway y automatizar la creación o actu
 1. Crea un repositorio vacío en GitHub y sube este proyecto.
 2. En Railway, crea un proyecto y elige **Deploy from GitHub repo**.
 3. Añade el plugin **PostgreSQL** al mismo proyecto.
-4. En el servicio de n8n, configura `N8N_ENCRYPTION_KEY`, `N8N_HOST`, `N8N_PROTOCOL`, `WEBHOOK_URL` y `DB_TYPE=postgresdb`.
-5. Configura `N8N_PORT=${{PORT}}` para que n8n use el puerto que Railway asigna al servicio.
+4. En el servicio de n8n, configura `N8N_ENCRYPTION_KEY`, `N8N_HOST`, `N8N_PROTOCOL`, `N8N_WEBHOOK_URL` y `DB_TYPE=postgresdb`.
 6. En el servicio n8n, crea `DB_POSTGRESDB_HOST`, `DB_POSTGRESDB_PORT`, `DB_POSTGRESDB_DATABASE`, `DB_POSTGRESDB_USER` y `DB_POSTGRESDB_PASSWORD` usando referencias de Railway. Si el servicio se llama `Postgres`, los valores son `${{Postgres.PGHOST}}`, `${{Postgres.PGPORT}}`, `${{Postgres.PGDATABASE}}`, `${{Postgres.PGUSER}}` y `${{Postgres.PGPASSWORD}}`. Sustituye `Postgres` por el nombre exacto de tu servicio si es diferente.
 7. Genera un dominio público en **Settings > Networking** y actualiza `N8N_HOST` y `WEBHOOK_URL` con ese dominio.
 8. Abre n8n, crea el usuario propietario e importa `workflows/trello-to-github-issue.json`.
 
-Railway proporciona `PORT` automáticamente. `N8N_PORT=${{PORT}}` hace que n8n escuche en ese puerto; no configures `PORT` manualmente.
+Railway proporciona `PORT` automáticamente. El launcher incluido lee `PORT` y configura `N8N_PORT`; no configures `PORT` ni `N8N_PORT` manualmente en Railway.
 
 ## Credenciales y GitHub
 

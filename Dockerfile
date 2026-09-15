@@ -5,4 +5,4 @@ ENV N8N_PORT=5678
 
 EXPOSE 5678
 
-CMD ["start"]
+CMD ["node", "/home/node/start-n8n.js"]
