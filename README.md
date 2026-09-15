@@ -16,7 +16,7 @@ Repositorio base para desplegar n8n en Railway y automatizar la creación o actu
 1. Crea un repositorio vacío en GitHub y sube este proyecto.
 2. En Railway, crea un proyecto y elige **Deploy from GitHub repo**.
 3. Añade el plugin **PostgreSQL** al mismo proyecto.
-4. En el servicio de n8n, configura `N8N_ENCRYPTION_KEY`, `N8N_HOST`, `N8N_PROTOCOL`, `N8N_WEBHOOK_URL` y `DB_TYPE=postgresdb`.
+4. En el servicio de n8n, configura `N8N_ENCRYPTION_KEY`, `N8N_HOST`, `N8N_PROTOCOL`, `N8N_WEBHOOK_URL`, `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` y `DB_TYPE=postgresdb`.
 5. En el servicio n8n, crea `DB_POSTGRESDB_HOST`, `DB_POSTGRESDB_PORT`, `DB_POSTGRESDB_DATABASE`, `DB_POSTGRESDB_USER` y `DB_POSTGRESDB_PASSWORD` usando referencias de Railway. Si el servicio se llama `Postgres`, los valores son `${{Postgres.PGHOST}}`, `${{Postgres.PGPORT}}`, `${{Postgres.PGDATABASE}}`, `${{Postgres.PGUSER}}` y `${{Postgres.PGPASSWORD}}`. Sustituye `Postgres` por el nombre exacto de tu servicio si es diferente.
 6. Genera un dominio público en **Settings > Networking** y actualiza `N8N_HOST` y `WEBHOOK_URL` con ese dominio.
 7. Abre n8n, crea el usuario propietario e importa `workflows/trello-to-github-issue.json`.
@@ -36,6 +36,8 @@ Con un fine-grained token de GitHub, concede **Issues: Read and write** sobre el
 El workflow expone `POST /webhook/trello-card-created`. Solo continúa cuando el evento es una tarjeta creada en `Dev To Do` o una tarjeta movida hacia esa lista. En Trello, configura un webhook sobre el tablero o modelo que quieras observar y usa la URL de producción que muestra n8n.
 
 El workflow consulta la card en la API de Trello para resolver uno o varios responsables y sus labels. Necesitas una API key y un token de Trello con acceso al tablero.
+
+`N8N_BLOCK_ENV_ACCESS_IN_NODE=false` es necesario porque el workflow lee las variables `GITHUB_*` y `TRELLO_*` mediante `$env`. En una instalación compartida o más sensible, sustituye ese acceso por credenciales nativas de n8n.
 
 ## Desarrollo local
 
