@@ -17,13 +17,35 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "const action = $json.body?.action ?? $json.action ?? {};\nconst card = action.data?.card ?? $json.body?.card ?? $json.card ?? {};\nconst list = action.data?.listAfter ?? action.data?.list ?? {};\n\nreturn [{\n  json: {\n    title: card.name ?? 'Trello card',\n    description: [\n      card.desc ?? '',\n      card.shortUrl ? `Trello: ${card.shortUrl}` : '',\n      list.name ? `List: ${list.name}` : ''\n    ].filter(Boolean).join('\\n\\n')\n  }\n}];"
+				"jsCode": "const action = $json.body?.action ?? $json.action ?? {};\nconst data = action.data ?? {};\nconst card = data.card ?? $json.body?.card ?? $json.card ?? {};\nconst destinationList = data.listAfter ?? data.list ?? {};\nconst sourceList = data.listBefore ?? {};\nconst targetList = 'Dev To Do';\nconst wasCreatedInTarget = action.type === 'createCard' && destinationList.name === targetList;\nconst wasMovedToTarget = action.type === 'updateCard' && destinationList.name === targetList && sourceList.name !== targetList;\n\nif (!wasCreatedInTarget && !wasMovedToTarget) {\n  return [];\n}\n\nif (!card.id) {\n  throw new Error('El evento de Trello no contiene el ID de la card');\n}\n\nreturn [{ json: { cardId: card.id } }];"
+			},
+			"id": "filter-dev-to-do",
+			"name": "Filter Dev To Do",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [460, 300]
+		},
+		{
+			"parameters": {
+				"method": "GET",
+				"url": "=https://api.trello.com/1/cards/{{$json.cardId}}?key={{$env.TRELLO_API_KEY}}&token={{$env.TRELLO_TOKEN}}&members=true&member_fields=username&labels=true",
+				"options": {}
+			},
+			"id": "get-trello-card",
+			"name": "Get Trello Card Details",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [680, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "const card = $json;\nconst labels = (card.labels ?? []).map((label) => label.name).filter(Boolean);\nconst assignees = (card.members ?? []).map((member) => member.username).filter(Boolean);\nconst description = [card.desc ?? '', card.shortUrl ? `Trello: ${card.shortUrl}` : ''].filter(Boolean).join('\\n\\n');\n\nreturn [{\n  json: {\n    title: card.name ?? 'Trello card',\n    description,\n    labels,\n    assignees,\n    trelloUrl: card.shortUrl ?? ''\n  }\n}];"
 			},
 			"id": "normalize-trello-card",
 			"name": "Normalize Trello Card",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [460, 300]
+			"position": [900, 300]
 		},
 		{
 			"parameters": {
@@ -42,18 +64,26 @@
 				},
 				"sendBody": true,
 				"specifyBody": "json",
-				"jsonBody": "={\"title\": $json.title, \"body\": $json.description}",
+				"jsonBody": "={\"title\": $json.title, \"body\": $json.description, \"labels\": $json.labels, \"assignees\": $json.assignees}",
 				"options": {}
 			},
 			"id": "create-github-issue",
 			"name": "Create GitHub Issue",
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.2,
-			"position": [700, 300]
+			"position": [1140, 300]
 		}
 	],
 	"connections": {
 		"Trello Webhook": {
+			"main": [[{ "node": "Filter Dev To Do", "type": "main", "index": 0 }]]
+		},
+		"Filter Dev To Do": {
+			"main": [
+				[{ "node": "Get Trello Card Details", "type": "main", "index": 0 }]
+			]
+		},
+		"Get Trello Card Details": {
 			"main": [
 				[{ "node": "Normalize Trello Card", "type": "main", "index": 0 }]
 			]

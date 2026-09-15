@@ -6,7 +6,9 @@ Repositorio base para desplegar n8n en Railway y automatizar la creación o actu
 
 - `Dockerfile`: imagen oficial de n8n configurada para escuchar el puerto de Railway.
 - `railway.json`: configuración de build y healthcheck.
+- `compose.yaml`: arranque local de n8n con Docker Compose y persistencia.
 - `.env.example`: variables necesarias para n8n, PostgreSQL y GitHub.
+- `.env.local.example`: variables mínimas para desarrollo local con SQLite.
 - `workflows/trello-to-github-issue.json`: workflow de ejemplo para importar en n8n.
 
 ## Despliegue en Railway
@@ -25,20 +27,31 @@ Railway proporciona `PORT` automáticamente. El `Dockerfile` lo usa al arrancar 
 
 El workflow de ejemplo espera `GITHUB_OWNER`, `GITHUB_REPO` y `GITHUB_TOKEN` como variables de entorno de n8n. Para producción, es preferible crear una credencial de GitHub en n8n y seleccionarla en el nodo HTTP Request.
 
+Para copiar responsables y labels, añade también `TRELLO_API_KEY` y `TRELLO_TOKEN`. El workflow consulta los detalles de la card y usa el `username` de cada miembro de Trello como login de GitHub. Los labels se copian por nombre directamente. El token de GitHub debe tener permisos `Issues: Read and write`.
+
 Con un fine-grained token de GitHub, concede **Issues: Read and write** sobre el repositorio elegido. No guardes tokens en el repositorio.
 
 ## Configurar Trello
 
-El workflow expone `POST /webhook/trello-card-created`. En Trello, configura un webhook sobre el tablero o modelo que quieras observar y usa la URL de producción que muestra n8n.
+El workflow expone `POST /webhook/trello-card-created`. Solo continúa cuando el evento es una tarjeta creada en `Dev To Do` o una tarjeta movida hacia esa lista. En Trello, configura un webhook sobre el tablero o modelo que quieras observar y usa la URL de producción que muestra n8n.
 
-El payload real de Trello puede variar según el evento. El nodo `Normalize Trello Card` concentra el mapeo de campos para que puedas adaptarlo sin tocar la llamada a GitHub.
+El workflow consulta la card en la API de Trello para resolver uno o varios responsables y sus labels. Necesitas una API key y un token de Trello con acceso al tablero.
 
 ## Desarrollo local
 
-Para probar n8n localmente, copia `.env.example` a `.env`, completa los valores y ejecuta:
+Para probar n8n localmente, crea el archivo de variables y completa el token de GitHub:
 
 ```bash
-docker run --rm -it --env-file .env -p 5678:5678 n8nio/n8n:latest
+cp .env.local.example .env.local
+docker compose up -d
 ```
 
-La instancia quedará disponible en `http://localhost:5678`. Para persistencia local, monta un volumen en `/home/node/.n8n`.
+La instancia quedará disponible en `http://localhost:5678`. Los datos se guardan en el volumen Docker `n8n_data`, así que no se pierden al detener el contenedor.
+
+Comandos útiles:
+
+```bash
+docker compose logs -f n8n
+docker compose down
+docker compose up -d
+```
