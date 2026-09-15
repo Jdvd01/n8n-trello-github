@@ -17,6 +17,34 @@
 		},
 		{
 			"parameters": {
+				"httpMethod": "GET",
+				"path": "trello-card-created",
+				"responseMode": "onReceived",
+				"options": {}
+			},
+			"id": "trello-webhook-validation",
+			"name": "Trello Webhook Validation",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [240, 500],
+			"webhookId": "trello-card-created-validation"
+		},
+		{
+			"parameters": {
+				"httpMethod": "HEAD",
+				"path": "trello-card-created",
+				"responseMode": "onReceived",
+				"options": {}
+			},
+			"id": "trello-webhook-head-validation",
+			"name": "Trello Webhook HEAD Validation",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [240, 700],
+			"webhookId": "trello-card-created-head-validation"
+		},
+		{
+			"parameters": {
 				"jsCode": "const action = $json.body?.action ?? $json.action ?? {};\nconst data = action.data ?? {};\nconst card = data.card ?? $json.body?.card ?? $json.card ?? {};\nconst destinationList = data.listAfter ?? data.list ?? {};\nconst sourceList = data.listBefore ?? {};\nconst targetList = 'Dev To Do';\nconst wasCreatedInTarget = action.type === 'createCard' && destinationList.name === targetList;\nconst wasMovedToTarget = action.type === 'updateCard' && destinationList.name === targetList && sourceList.name !== targetList;\n\nif (!wasCreatedInTarget && !wasMovedToTarget) {\n  return [];\n}\n\nif (!card.id) {\n  throw new Error('El evento de Trello no contiene el ID de la card');\n}\n\nreturn [{ json: { cardId: card.id } }];"
 			},
 			"id": "filter-dev-to-do",
