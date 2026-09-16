@@ -219,6 +219,28 @@
 					}
 				]
 			]
+		},
+		"Create or Update GitHub Issue": {
+			"main": [
+				[
+					{
+						"node": "Add GitHub Labels",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add GitHub Labels": {
+			"main": [
+				[
+					{
+						"node": "Add GitHub Assignees",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": false,
