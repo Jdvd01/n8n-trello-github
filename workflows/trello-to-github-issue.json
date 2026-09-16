@@ -55,6 +55,16 @@
 		},
 		{
 			"parameters": {
+				"jsCode": "const action = $json.body?.action ?? $json.action ?? {};\nconst data = action.data ?? {};\nconst card = data.card ?? $json.body?.card ?? $json.card ?? {};\nconst destinationList = data.listAfter ?? data.list ?? {};\nconst sourceList = data.listBefore ?? data.previousList ?? data.oldList ?? {};\nconst doneList = 'Done 🎉';\nconst previousListName = typeof sourceList.name === 'string' ? sourceList.name : '';\nconst nextListName = typeof destinationList.name === 'string' ? destinationList.name : '';\nconst wasMovedToDone = action.type === 'updateCard' && nextListName === doneList && previousListName !== doneList;\nconst wasCreatedInDone = action.type === 'createCard' && nextListName === doneList;\n\nif (!wasMovedToDone && !wasCreatedInDone) {\n  return [];\n}\n\nif (!card.id) {\n  throw new Error('El evento de Trello no contiene el ID de la card');\n}\n\nreturn [{ json: { cardId: card.id } }];"
+			},
+			"id": "filter-done",
+			"name": "Filter Done",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [460, 520]
+		},
+		{
+			"parameters": {
 				"method": "GET",
 				"url": "=https://api.trello.com/1/cards/{{$json.cardId}}?key={{$env.TRELLO_API_KEY}}&token={{$env.TRELLO_TOKEN}}&members=true&member_fields=username&labels=true",
 				"options": {}
@@ -100,6 +110,29 @@
 		},
 		{
 			"parameters": {
+				"method": "GET",
+				"url": "=https://api.github.com/search/issues?q=repo:{{$env.GITHUB_OWNER}}/{{$env.GITHUB_REPO}}+is:issue+%22Trello+Card+ID:+{{$json.cardId}}%22+in:body",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{ "name": "Accept", "value": "application/vnd.github+json" },
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{$env.GITHUB_TOKEN}}"
+						},
+						{ "name": "X-GitHub-Api-Version", "value": "2022-11-28" }
+					]
+				},
+				"options": {}
+			},
+			"id": "search-close-issue",
+			"name": "Search GitHub Issue to Close",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1120, 520]
+		},
+		{
+			"parameters": {
 				"jsCode": "const normalized = $('Normalize Trello Card').item.json;\nconst trelloCardId = normalized.trelloCardId || '';\nconst searchResult = $json && Array.isArray($json.items) ? $json.items : [];\nconst matchingIssue = searchResult.find((issue) => {\n  if (!issue || !issue.number) return false;\n  return true;\n});\nconst payload = {\n  title: normalized.title,\n  body: normalized.description,\n  labels: Array.isArray(normalized.labels) ? normalized.labels : [],\n  assignees: Array.isArray(normalized.assignees) ? normalized.assignees : []\n};\n\nif (matchingIssue) {\n  return [{ json: {\n    method: 'PATCH',\n    url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues/${matchingIssue.number}`,\n    body: {\n      title: payload.title,\n      body: payload.body,\n      labels: payload.labels,\n      assignees: payload.assignees\n    },\n    number: matchingIssue.number\n  }}];\n}\n\nreturn [{ json: {\n  method: 'POST',\n  url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues`,\n  body: {\n    title: payload.title,\n    body: payload.body,\n    labels: payload.labels,\n    assignees: payload.assignees\n  },\n  number: null\n}}];"
 			},
 			"id": "resolve-existing-issue",
@@ -133,6 +166,42 @@
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.2,
 			"position": [1600, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "const searchResult = $json && Array.isArray($json.items) ? $json.items : [];\nconst issue = searchResult[0] || null;\nif (!issue || !issue.number) {\n  return [];\n}\nreturn [{ json: {\n  method: 'PATCH',\n  url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues/${issue.number}` ,\n  body: { state: 'closed' },\n  number: issue.number\n}}];"
+			},
+			"id": "resolve-close-issue",
+			"name": "Resolve Close Issue",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1360, 520]
+		},
+		{
+			"parameters": {
+				"method": "={{ $json.method }}",
+				"url": "={{ $json.url }}",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{ "name": "Accept", "value": "application/vnd.github+json" },
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{$env.GITHUB_TOKEN}}"
+						},
+						{ "name": "X-GitHub-Api-Version", "value": "2022-11-28" }
+					]
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ $json.body }}",
+				"options": {}
+			},
+			"id": "close-github-issue",
+			"name": "Close GitHub Issue",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1600, 520]
 		},
 		{
 			"parameters": {
@@ -189,11 +258,21 @@
 	],
 	"connections": {
 		"Trello Webhook": {
-			"main": [[{ "node": "Filter Dev To Do", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{ "node": "Filter Dev To Do", "type": "main", "index": 0 },
+					{ "node": "Filter Done", "type": "main", "index": 0 }
+				]
+			]
 		},
 		"Filter Dev To Do": {
 			"main": [
 				[{ "node": "Get Trello Card Details", "type": "main", "index": 0 }]
+			]
+		},
+		"Filter Done": {
+			"main": [
+				[{ "node": "Search GitHub Issue to Close", "type": "main", "index": 0 }]
 			]
 		},
 		"Get Trello Card Details": {
@@ -222,6 +301,12 @@
 		},
 		"Create or Update GitHub Issue": {
 			"main": []
+		},
+		"Search GitHub Issue to Close": {
+			"main": [[{ "node": "Resolve Close Issue", "type": "main", "index": 0 }]]
+		},
+		"Resolve Close Issue": {
+			"main": [[{ "node": "Close GitHub Issue", "type": "main", "index": 0 }]]
 		}
 	},
 	"active": false,
