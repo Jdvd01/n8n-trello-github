@@ -27,7 +27,7 @@ Railway proporciona `PORT` automáticamente. El launcher incluido lee `PORT` y c
 
 El workflow de ejemplo espera `GITHUB_OWNER`, `GITHUB_REPO` y `GITHUB_TOKEN` como variables de entorno de n8n. Para producción, es preferible crear una credencial de GitHub en n8n y seleccionarla en el nodo HTTP Request.
 
-Para copiar responsables y labels, añade también `TRELLO_API_KEY` y `TRELLO_TOKEN`. El workflow consulta los detalles de la card y usa el `username` de cada miembro de Trello como login de GitHub. Los labels se copian por nombre directamente. El token de GitHub debe tener permisos `Issues: Read and write`.
+Para copiar responsables y labels, añade también `TRELLO_API_KEY` y `TRELLO_TOKEN`. El workflow consulta los detalles de la card y usa el `username` de cada miembro de Trello como login de GitHub. Si algún usuario tiene un login distinto en GitHub, configura `GITHUB_ASSIGNEE_MAP`, por ejemplo `{"bryangarcía89":"bryanstgarcia","bryangarcia89":"bryanstgarcia"}`. Los labels se copian por nombre directamente. El token de GitHub debe tener permisos `Issues: Read and write` y cada assignee debe tener acceso al repositorio.
 
 Con un fine-grained token de GitHub, concede **Issues: Read and write** sobre el repositorio elegido. No guardes tokens en el repositorio.
 
