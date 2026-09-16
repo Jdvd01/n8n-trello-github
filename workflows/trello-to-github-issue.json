@@ -78,7 +78,7 @@
 		{
 			"parameters": {
 				"method": "GET",
-				"url": "=https://api.github.com/repos/{{$env.GITHUB_OWNER}}/{{$env.GITHUB_REPO}}/issues?state=all&per_page=100",
+				"url": "=https://api.github.com/search/issues?q=repo:{{$env.GITHUB_OWNER}}/{{$env.GITHUB_REPO}}+%22Trello+Card+ID:+{{$json.trelloCardId}}%22+in:body",
 				"sendHeaders": true,
 				"headerParameters": {
 					"parameters": [
@@ -93,14 +93,14 @@
 				"options": {}
 			},
 			"id": "list-github-issues",
-			"name": "List GitHub Issues",
+			"name": "Search GitHub Issue by Trello Card ID",
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.2,
 			"position": [1120, 300]
 		},
 		{
 			"parameters": {
-				"jsCode": "const normalized = $('Normalize Trello Card').item.json;\nconst trelloUrl = normalized.trelloUrl || '';\nconst trelloCardId = normalized.trelloCardId || '';\nconst stableMarker = normalized.issueMarker || (trelloCardId ? `Trello Card ID: ${trelloCardId}` : '');\nconst issues = Array.isArray($json) ? $json : ($json.items ?? []);\nconst matchingIssue = issues.find((issue) => {\n  const body = typeof issue.body === 'string' ? issue.body.toLowerCase() : '';\n  const title = typeof issue.title === 'string' ? issue.title.toLowerCase() : '';\n  const marker = stableMarker.toLowerCase();\n  return body.includes(marker) || title.includes(marker) || body.includes((trelloUrl || '').toLowerCase());\n});\nconst payload = {\n  title: normalized.title,\n  body: normalized.description,\n  labels: Array.isArray(normalized.labels) ? normalized.labels : [],\n  assignees: Array.isArray(normalized.assignees) ? normalized.assignees : []\n};\n\nif (matchingIssue) {\n  return [{ json: {\n    method: 'PATCH',\n    url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues/${matchingIssue.number}`,\n    body: { title: payload.title, body: payload.body, labels: payload.labels, assignees: payload.assignees },\n    number: matchingIssue.number\n  }}];\n}\n\nreturn [{ json: {\n  method: 'POST',\n  url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues`,\n  body: {\n    title: payload.title,\n    body: payload.body,\n    labels: payload.labels,\n    assignees: payload.assignees\n  },\n  number: null\n}}];"
+				"jsCode": "const normalized = $('Normalize Trello Card').item.json;\nconst trelloCardId = normalized.trelloCardId || '';\nconst searchResult = $json && Array.isArray($json.items) ? $json.items : [];\nconst matchingIssue = searchResult.find((issue) => {\n  if (!issue || !issue.number) return false;\n  return true;\n});\nconst payload = {\n  title: normalized.title,\n  body: normalized.description,\n  labels: Array.isArray(normalized.labels) ? normalized.labels : [],\n  assignees: Array.isArray(normalized.assignees) ? normalized.assignees : []\n};\n\nif (matchingIssue) {\n  return [{ json: {\n    method: 'PATCH',\n    url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues/${matchingIssue.number}`,\n    body: { title: payload.title, body: payload.body, labels: payload.labels, assignees: payload.assignees },\n    number: matchingIssue.number\n  }}];\n}\n\nreturn [{ json: {\n  method: 'POST',\n  url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues`,\n  body: {\n    title: payload.title,\n    body: payload.body,\n    labels: payload.labels,\n    assignees: payload.assignees\n  },\n  number: null\n}}];"
 			},
 			"id": "resolve-existing-issue",
 			"name": "Resolve Existing Issue",
