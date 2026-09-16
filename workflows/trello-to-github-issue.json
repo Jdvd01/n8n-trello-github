@@ -45,7 +45,7 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "const action = $json.body?.action ?? $json.action ?? {};\nconst data = action.data ?? {};\nconst card = data.card ?? $json.body?.card ?? $json.card ?? {};\nconst destinationList = data.listAfter ?? data.list ?? {};\nconst sourceList = data.listBefore ?? data.previousList ?? {};\nconst targetList = 'Dev To Do';\nconst previousListName = typeof sourceList.name === 'string' ? sourceList.name : '';\nconst nextListName = typeof destinationList.name === 'string' ? destinationList.name : '';\nconst wasCreatedInTarget = action.type === 'createCard' && nextListName === targetList;\nconst wasMovedToTarget = action.type === 'updateCard' && nextListName === targetList && previousListName !== targetList && previousListName !== '';\n\nif (!wasCreatedInTarget && !wasMovedToTarget) {\n  return [];\n}\n\nif (!card.id) {\n  throw new Error('El evento de Trello no contiene el ID de la card');\n}\n\nreturn [{ json: { cardId: card.id } }];"
+				"jsCode": "const action = $json.body?.action ?? $json.action ?? {};\nconst data = action.data ?? {};\nconst card = data.card ?? $json.body?.card ?? $json.card ?? {};\nconst destinationList = data.listAfter ?? data.list ?? {};\nconst sourceList = data.listBefore ?? data.previousList ?? data.oldList ?? {};\nconst targetList = 'Dev To Do';\nconst previousListName = typeof sourceList.name === 'string' ? sourceList.name : '';\nconst nextListName = typeof destinationList.name === 'string' ? destinationList.name : '';\nconst currentListIsTarget = nextListName === targetList || (action.type === 'updateCard' && previousListName === targetList);\nconst wasCreatedInTarget = action.type === 'createCard' && nextListName === targetList;\nconst wasMovedToTarget = action.type === 'updateCard' && nextListName === targetList && previousListName !== targetList && previousListName !== '';\nconst wasUpdatedInTarget = action.type === 'updateCard' && currentListIsTarget;\n\nif (!wasCreatedInTarget && !wasMovedToTarget && !wasUpdatedInTarget) {\n  return [];\n}\n\nif (!card.id) {\n  throw new Error('El evento de Trello no contiene el ID de la card');\n}\n\nreturn [{ json: { cardId: card.id } }];"
 			},
 			"id": "filter-dev-to-do",
 			"name": "Filter Dev To Do",
@@ -205,10 +205,20 @@
 			"main": [[{ "node": "List GitHub Issues", "type": "main", "index": 0 }]]
 		},
 		"List GitHub Issues": {
-			"main": [[{ "node": "Resolve Existing Issue", "type": "main", "index": 0 }]]
+			"main": [
+				[{ "node": "Resolve Existing Issue", "type": "main", "index": 0 }]
+			]
 		},
 		"Resolve Existing Issue": {
-			"main": [[{ "node": "Create or Update GitHub Issue", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Create or Update GitHub Issue",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": false,
