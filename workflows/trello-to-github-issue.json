@@ -45,7 +45,7 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "const action = $json.body?.action ?? $json.action ?? {};\nconst data = action.data ?? {};\nconst card = data.card ?? $json.body?.card ?? $json.card ?? {};\nconst destinationList = data.listAfter ?? data.list ?? {};\nconst sourceList = data.listBefore ?? {};\nconst targetList = 'Dev To Do';\nconst wasCreatedInTarget = action.type === 'createCard' && destinationList.name === targetList;\nconst wasMovedToTarget = action.type === 'updateCard' && destinationList.name === targetList && sourceList.name !== targetList;\n\nif (!wasCreatedInTarget && !wasMovedToTarget) {\n  return [];\n}\n\nif (!card.id) {\n  throw new Error('El evento de Trello no contiene el ID de la card');\n}\n\nreturn [{ json: { cardId: card.id } }];"
+				"jsCode": "const action = $json.body?.action ?? $json.action ?? {};\nconst data = action.data ?? {};\nconst card = data.card ?? $json.body?.card ?? $json.card ?? {};\nconst destinationList = data.listAfter ?? data.list ?? {};\nconst sourceList = data.listBefore ?? data.previousList ?? {};\nconst targetList = 'Dev To Do';\nconst previousListName = typeof sourceList.name === 'string' ? sourceList.name : '';\nconst nextListName = typeof destinationList.name === 'string' ? destinationList.name : '';\nconst wasCreatedInTarget = action.type === 'createCard' && nextListName === targetList;\nconst wasMovedToTarget = action.type === 'updateCard' && nextListName === targetList && previousListName !== targetList && previousListName !== '';\n\nif (!wasCreatedInTarget && !wasMovedToTarget) {\n  return [];\n}\n\nif (!card.id) {\n  throw new Error('El evento de Trello no contiene el ID de la card');\n}\n\nreturn [{ json: { cardId: card.id } }];"
 			},
 			"id": "filter-dev-to-do",
 			"name": "Filter Dev To Do",
@@ -67,7 +67,7 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "const card = $json;\nlet assigneeMap = {};\ntry {\n  assigneeMap = JSON.parse($env.GITHUB_ASSIGNEE_MAP || '{}');\n} catch {\n  throw new Error('GITHUB_ASSIGNEE_MAP debe ser un JSON valido');\n}\n\nconst labels = (card.labels ?? []).map((label) => label.name).filter(Boolean);\nconst assignees = (card.members ?? [])\n  .map((member) => member.username)\n  .filter(Boolean)\n  .map((username) => assigneeMap[username] || username);\nconst description = [card.desc ?? '', card.shortUrl ? `Trello: ${card.shortUrl}` : ''].filter(Boolean).join('\\n\\n');\n\nreturn [{\n  json: {\n    title: card.name ?? 'Trello card',\n    description,\n    labels,\n    assignees,\n    trelloUrl: card.shortUrl ?? ''\n  }\n}];"
+				"jsCode": "const card = $json;\nlet assigneeMap = {};\ntry {\n  assigneeMap = JSON.parse($env.GITHUB_ASSIGNEE_MAP || '{}');\n} catch {\n  throw new Error('GITHUB_ASSIGNEE_MAP debe ser un JSON valido');\n}\n\nconst labels = (card.labels ?? []).map((label) => label.name).filter((label) => typeof label === 'string' && label.trim().length > 0);\nconst assignees = (card.members ?? [])\n  .map((member) => member.username)\n  .filter((username) => typeof username === 'string' && username.trim().length > 0)\n  .map((username) => assigneeMap[username] || username);\nconst description = [card.desc ?? '', card.shortUrl ? `Trello: ${card.shortUrl}` : ''].filter(Boolean).join('\\n\\n');\n\nreturn [{\n  json: {\n    title: card.name ?? 'Trello card',\n    description,\n    labels,\n    assignees,\n    trelloUrl: card.shortUrl ?? ''\n  }\n}];"
 			},
 			"id": "normalize-trello-card",
 			"name": "Normalize Trello Card",
@@ -92,7 +92,7 @@
 				},
 				"sendBody": true,
 				"specifyBody": "json",
-				"jsonBody": "={{ { title: $json.title, body: $json.description } }}",
+				"jsonBody": "={{ { title: $json.title, body: $json.description, labels: Array.isArray($json.labels) ? $json.labels : [], assignees: Array.isArray($json.assignees) ? $json.assignees : [] } }}",
 				"options": {}
 			},
 			"id": "create-github-issue",
@@ -118,7 +118,7 @@
 				},
 				"sendBody": true,
 				"specifyBody": "json",
-				"jsonBody": "={{ { labels: $('Normalize Trello Card').item.json.labels } }}",
+				"jsonBody": "={{ { labels: Array.isArray($('Normalize Trello Card').item.json.labels) ? $('Normalize Trello Card').item.json.labels : [] } }}",
 				"options": {}
 			},
 			"id": "add-github-labels",
@@ -144,7 +144,7 @@
 				},
 				"sendBody": true,
 				"specifyBody": "json",
-				"jsonBody": "={{ { assignees: $('Normalize Trello Card').item.json.assignees } }}",
+				"jsonBody": "={{ { assignees: Array.isArray($('Normalize Trello Card').item.json.assignees) ? $('Normalize Trello Card').item.json.assignees : [] } }}",
 				"options": {}
 			},
 			"id": "add-github-assignees",
