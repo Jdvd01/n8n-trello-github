@@ -65,6 +65,16 @@
 		},
 		{
 			"parameters": {
+				"jsCode": "const action = $json.body?.action ?? $json.action ?? {};\nconst data = action.data ?? {};\nconst card = data.card ?? $json.body?.card ?? $json.card ?? {};\n\nif (action.type !== 'deleteCard') {\n  return [];\n}\n\nif (!card.id) {\n  throw new Error('El evento de Trello no contiene el ID de la card eliminada');\n}\n\nreturn [{ json: { cardId: card.id } }];"
+			},
+			"id": "filter-delete",
+			"name": "Filter Deleted Card",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [460, 740]
+		},
+		{
+			"parameters": {
 				"method": "GET",
 				"url": "=https://api.trello.com/1/cards/{{$json.cardId}}?key={{$env.TRELLO_API_KEY}}&token={{$env.TRELLO_TOKEN}}&members=true&member_fields=username&labels=true",
 				"options": {}
@@ -130,6 +140,29 @@
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.2,
 			"position": [1120, 520]
+		},
+		{
+			"parameters": {
+				"method": "GET",
+				"url": "=https://api.github.com/search/issues?q=repo:{{$env.GITHUB_OWNER}}/{{$env.GITHUB_REPO}}+is:issue+%22Trello+Card+ID:+{{$json.cardId}}%22+in:body",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{ "name": "Accept", "value": "application/vnd.github+json" },
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{$env.GITHUB_TOKEN}}"
+						},
+						{ "name": "X-GitHub-Api-Version", "value": "2022-11-28" }
+					]
+				},
+				"options": {}
+			},
+			"id": "search-delete-issue",
+			"name": "Search GitHub Issue to Delete",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1120, 740]
 		},
 		{
 			"parameters": {
@@ -205,6 +238,42 @@
 		},
 		{
 			"parameters": {
+				"jsCode": "const searchResult = $json && Array.isArray($json.items) ? $json.items : [];\nconst issue = searchResult[0] || null;\nif (!issue || !issue.node_id) {\n  return [];\n}\nreturn [{ json: {\n  method: 'POST',\n  url: 'https://api.github.com/graphql',\n  body: {\n    query: 'mutation DeleteIssue($issueId: ID!) { deleteIssue(input: { issueId: $issueId }) { clientMutationId } }',\n    variables: { issueId: issue.node_id }\n  },\n  issueNumber: issue.number\n}}];"
+			},
+			"id": "resolve-delete-issue",
+			"name": "Resolve Delete Issue",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1360, 740]
+		},
+		{
+			"parameters": {
+				"method": "={{ $json.method }}",
+				"url": "={{ $json.url }}",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{ "name": "Accept", "value": "application/vnd.github+json" },
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{$env.GITHUB_TOKEN}}"
+						},
+						{ "name": "X-GitHub-Api-Version", "value": "2022-11-28" }
+					]
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ $json.body }}",
+				"options": {}
+			},
+			"id": "delete-github-issue",
+			"name": "Delete GitHub Issue",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1600, 740]
+		},
+		{
+			"parameters": {
 				"method": "POST",
 				"url": "=https://api.github.com/repos/{{$env.GITHUB_OWNER}}/{{$env.GITHUB_REPO}}/issues/{{$json.number}}/labels",
 				"sendHeaders": true,
@@ -261,7 +330,8 @@
 			"main": [
 				[
 					{ "node": "Filter Dev To Do", "type": "main", "index": 0 },
-					{ "node": "Filter Done", "type": "main", "index": 0 }
+					{ "node": "Filter Done", "type": "main", "index": 0 },
+					{ "node": "Filter Deleted Card", "type": "main", "index": 0 }
 				]
 			]
 		},
@@ -275,15 +345,20 @@
 				[{ "node": "Search GitHub Issue to Close", "type": "main", "index": 0 }]
 			]
 		},
+		"Filter Deleted Card": {
+			"main": [
+				[{ "node": "Search GitHub Issue to Delete", "type": "main", "index": 0 }]
+			]
+		},
 		"Get Trello Card Details": {
 			"main": [
 				[{ "node": "Normalize Trello Card", "type": "main", "index": 0 }]
 			]
 		},
 		"Normalize Trello Card": {
-			"main": [[{ "node": "List GitHub Issues", "type": "main", "index": 0 }]]
+			"main": [[{ "node": "Search GitHub Issue by Trello Card ID", "type": "main", "index": 0 }]]
 		},
-		"List GitHub Issues": {
+		"Search GitHub Issue by Trello Card ID": {
 			"main": [
 				[{ "node": "Resolve Existing Issue", "type": "main", "index": 0 }]
 			]
@@ -307,6 +382,12 @@
 		},
 		"Resolve Close Issue": {
 			"main": [[{ "node": "Close GitHub Issue", "type": "main", "index": 0 }]]
+		},
+		"Search GitHub Issue to Delete": {
+			"main": [[{ "node": "Resolve Delete Issue", "type": "main", "index": 0 }]]
+		},
+		"Resolve Delete Issue": {
+			"main": [[{ "node": "Delete GitHub Issue", "type": "main", "index": 0 }]]
 		}
 	},
 	"active": false,
