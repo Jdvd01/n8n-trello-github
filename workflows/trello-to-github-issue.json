@@ -100,7 +100,7 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "const normalized = $('Normalize Trello Card').item.json;\nconst trelloCardId = normalized.trelloCardId || '';\nconst searchResult = $json && Array.isArray($json.items) ? $json.items : [];\nconst matchingIssue = searchResult.find((issue) => {\n  if (!issue || !issue.number) return false;\n  return true;\n});\nconst payload = {\n  title: normalized.title,\n  body: normalized.description,\n  labels: Array.isArray(normalized.labels) ? normalized.labels : [],\n  assignees: Array.isArray(normalized.assignees) ? normalized.assignees : []\n};\n\nif (matchingIssue) {\n  return [{ json: {\n    method: 'PATCH',\n    url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues/${matchingIssue.number}`,\n    body: { title: payload.title, body: payload.body, labels: payload.labels, assignees: payload.assignees },\n    number: matchingIssue.number\n  }}];\n}\n\nreturn [{ json: {\n  method: 'POST',\n  url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues`,\n  body: {\n    title: payload.title,\n    body: payload.body,\n    labels: payload.labels,\n    assignees: payload.assignees\n  },\n  number: null\n}}];"
+				"jsCode": "const normalized = $('Normalize Trello Card').item.json;\nconst trelloCardId = normalized.trelloCardId || '';\nconst searchResult = $json && Array.isArray($json.items) ? $json.items : [];\nconst matchingIssue = searchResult.find((issue) => {\n  if (!issue || !issue.number) return false;\n  return true;\n});\nconst payload = {\n  title: normalized.title,\n  body: normalized.description,\n  labels: Array.isArray(normalized.labels) ? normalized.labels : [],\n  assignees: Array.isArray(normalized.assignees) ? normalized.assignees : []\n};\n\nif (matchingIssue) {\n  return [{ json: {\n    method: 'PATCH',\n    url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues/${matchingIssue.number}`,\n    body: {\n      title: payload.title,\n      body: payload.body,\n      labels: payload.labels,\n      assignees: payload.assignees\n    },\n    number: matchingIssue.number\n  }}];\n}\n\nreturn [{ json: {\n  method: 'POST',\n  url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues`,\n  body: {\n    title: payload.title,\n    body: payload.body,\n    labels: payload.labels,\n    assignees: payload.assignees\n  },\n  number: null\n}}];"
 			},
 			"id": "resolve-existing-issue",
 			"name": "Resolve Existing Issue",
@@ -221,26 +221,7 @@
 			]
 		},
 		"Create or Update GitHub Issue": {
-			"main": [
-				[
-					{
-						"node": "Add GitHub Labels",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Add GitHub Labels": {
-			"main": [
-				[
-					{
-						"node": "Add GitHub Assignees",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
+			"main": []
 		}
 	},
 	"active": false,
