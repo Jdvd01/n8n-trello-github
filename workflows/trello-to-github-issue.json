@@ -347,7 +347,13 @@
 		},
 		"Filter Deleted Card": {
 			"main": [
-				[{ "node": "Search GitHub Issue to Delete", "type": "main", "index": 0 }]
+				[
+					{
+						"node": "Search GitHub Issue to Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
 			]
 		},
 		"Get Trello Card Details": {
@@ -356,7 +362,15 @@
 			]
 		},
 		"Normalize Trello Card": {
-			"main": [[{ "node": "Search GitHub Issue by Trello Card ID", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Search GitHub Issue by Trello Card ID",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Search GitHub Issue by Trello Card ID": {
 			"main": [
