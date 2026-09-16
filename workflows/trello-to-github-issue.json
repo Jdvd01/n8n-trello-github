@@ -77,8 +77,41 @@
 		},
 		{
 			"parameters": {
-				"method": "POST",
-				"url": "=https://api.github.com/repos/{{$env.GITHUB_OWNER}}/{{$env.GITHUB_REPO}}/issues",
+				"method": "GET",
+				"url": "=https://api.github.com/repos/{{$env.GITHUB_OWNER}}/{{$env.GITHUB_REPO}}/issues?state=all&per_page=100",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{ "name": "Accept", "value": "application/vnd.github+json" },
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{$env.GITHUB_TOKEN}}"
+						},
+						{ "name": "X-GitHub-Api-Version", "value": "2022-11-28" }
+					]
+				},
+				"options": {}
+			},
+			"id": "list-github-issues",
+			"name": "List GitHub Issues",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [1120, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "const trelloUrl = $('Normalize Trello Card').item.json.trelloUrl || '';\nconst issues = Array.isArray($json) ? $json : ($json.items ?? []);\nconst matchingIssue = issues.find((issue) => issue && typeof issue.body === 'string' && issue.body.includes(trelloUrl));\nconst normalized = $('Normalize Trello Card').item.json;\nconst payload = {\n  title: normalized.title,\n  body: normalized.description,\n  labels: Array.isArray(normalized.labels) ? normalized.labels : [],\n  assignees: Array.isArray(normalized.assignees) ? normalized.assignees : []\n};\n\nif (matchingIssue) {\n  return [{ json: {\n    method: 'PATCH',\n    url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues/${matchingIssue.number}`,\n    body: { title: payload.title, body: payload.body, labels: payload.labels, assignees: payload.assignees },\n    number: matchingIssue.number\n  }}];\n}\n\nreturn [{ json: {\n  method: 'POST',\n  url: `https://api.github.com/repos/${$env.GITHUB_OWNER}/${$env.GITHUB_REPO}/issues`,\n  body: {\n    title: payload.title,\n    body: payload.body,\n    labels: payload.labels,\n    assignees: payload.assignees\n  },\n  number: null\n}}];"
+			},
+			"id": "resolve-existing-issue",
+			"name": "Resolve Existing Issue",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1360, 300]
+		},
+		{
+			"parameters": {
+				"method": "={{ $json.method }}",
+				"url": "={{ $json.url }}",
 				"sendHeaders": true,
 				"headerParameters": {
 					"parameters": [
@@ -92,14 +125,14 @@
 				},
 				"sendBody": true,
 				"specifyBody": "json",
-				"jsonBody": "={{ { title: $json.title, body: $json.description, labels: Array.isArray($json.labels) ? $json.labels : [], assignees: Array.isArray($json.assignees) ? $json.assignees : [] } }}",
+				"jsonBody": "={{ $json.body }}",
 				"options": {}
 			},
-			"id": "create-github-issue",
-			"name": "Create GitHub Issue",
+			"id": "create-or-update-github-issue",
+			"name": "Create or Update GitHub Issue",
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.2,
-			"position": [1140, 300]
+			"position": [1600, 300]
 		},
 		{
 			"parameters": {
@@ -118,19 +151,19 @@
 				},
 				"sendBody": true,
 				"specifyBody": "json",
-				"jsonBody": "={{ { labels: Array.isArray($('Normalize Trello Card').item.json.labels) ? $('Normalize Trello Card').item.json.labels : [] } }}",
+				"jsonBody": "={{ { labels: Array.isArray($json.labels) ? $json.labels : [] } }}",
 				"options": {}
 			},
 			"id": "add-github-labels",
 			"name": "Add GitHub Labels",
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.2,
-			"position": [1380, 300]
+			"position": [1840, 300]
 		},
 		{
 			"parameters": {
 				"method": "POST",
-				"url": "=https://api.github.com/repos/{{$env.GITHUB_OWNER}}/{{$env.GITHUB_REPO}}/issues/{{$('Create GitHub Issue').item.json.number}}/assignees",
+				"url": "=https://api.github.com/repos/{{$env.GITHUB_OWNER}}/{{$env.GITHUB_REPO}}/issues/{{$json.number}}/assignees",
 				"sendHeaders": true,
 				"headerParameters": {
 					"parameters": [
@@ -144,14 +177,14 @@
 				},
 				"sendBody": true,
 				"specifyBody": "json",
-				"jsonBody": "={{ { assignees: Array.isArray($('Normalize Trello Card').item.json.assignees) ? $('Normalize Trello Card').item.json.assignees : [] } }}",
+				"jsonBody": "={{ { assignees: Array.isArray($json.assignees) ? $json.assignees : [] } }}",
 				"options": {}
 			},
 			"id": "add-github-assignees",
 			"name": "Add GitHub Assignees",
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.2,
-			"position": [1620, 300]
+			"position": [2080, 300]
 		}
 	],
 	"connections": {
@@ -169,13 +202,13 @@
 			]
 		},
 		"Normalize Trello Card": {
-			"main": [[{ "node": "Create GitHub Issue", "type": "main", "index": 0 }]]
+			"main": [[{ "node": "List GitHub Issues", "type": "main", "index": 0 }]]
 		},
-		"Create GitHub Issue": {
-			"main": [[{ "node": "Add GitHub Labels", "type": "main", "index": 0 }]]
+		"List GitHub Issues": {
+			"main": [[{ "node": "Resolve Existing Issue", "type": "main", "index": 0 }]]
 		},
-		"Add GitHub Labels": {
-			"main": [[{ "node": "Add GitHub Assignees", "type": "main", "index": 0 }]]
+		"Resolve Existing Issue": {
+			"main": [[{ "node": "Create or Update GitHub Issue", "type": "main", "index": 0 }]]
 		}
 	},
 	"active": false,
